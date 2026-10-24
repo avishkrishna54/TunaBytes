@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tunabytes V4 — AI Behavioral Antivirus &amp; Human-in-the-Loop EDR</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: #0f172a;
+      --panel-alt: #131d35;
+      --border: #1e293b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --cyan: #38bdf8;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --red: #ef4444;
+      --purple: #a855f7;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 18px 22px;
+      line-height: 1.45;
+    }
+    /* Top Navbar */
+    .topbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 14px;
+    }
+    .brand-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      color: var(--cyan);
+    }
+    .brand-sub { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+    .top-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+
+    button {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid #334155;
+      padding: 7px 13px;
+      border-radius: 7px;
+      font-size: 0.79rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    button:hover:not(:disabled) { border-color: var(--cyan); background: #26354d; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-cyan { background: rgba(56, 189, 248, 0.15); border-color: var(--cyan); color: #bae6fd; }
+    .btn-amber { background: rgba(245, 158, 11, 0.16); border-color: var(--amber); color: #fde68a; }
+    .btn-red { background: rgba(239, 68, 68, 0.18); border-color: var(--red); color: #fecaca; }
+    .btn-green { background: rgba(16, 185, 129, 0.16); border-color: var(--green); color: #a7f3d0; }
+    .btn-purple { background: rgba(168, 85, 247, 0.16); border-color: var(--purple); color: #e9d5ff; }
+
+    /* Decoupled Health Status Strip */
+    .health-strip {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .health-pill {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .health-label { font-size: 0.72rem; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.69rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .b-green { background: rgba(16, 185, 129, 0.18); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); }
+    .b-amber { background: rgba(245, 158, 11, 0.18); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); }
+    .b-red { background: rgba(239, 68, 68, 0.22); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.45); }
+    .b-purple { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.4); }
+    .b-cyan { background: rgba(56, 189, 248, 0.16); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.35); }
+    .b-muted { background: #1e293b; color: #94a3b8; }
+
+    /* Pulsing Threat Banner */
+    @keyframes pulseBorder {
+      0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.45); }
+      70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+    }
+    .threat-banner {
+      display: none;
+      background: linear-gradient(90deg, rgba(127, 29, 29, 0.45), rgba(15, 23, 42, 0.96));
+      border: 1px solid var(--red);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      animation: pulseBorder 2s infinite;
+    }
+    .threat-banner-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .threat-banner-title { font-size: 0.95rem; font-weight: 800; color: #fca5a5; }
+    .threat-banner-desc { font-size: 0.84rem; color: #f1f5f9; margin-bottom: 10px; }
+    .threat-banner-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    /* 3 Metric Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .card-title {
+      font-size: 0.83rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--cyan);
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      padding: 4px 0;
+      border-bottom: 1px dashed rgba(51, 65, 85, 0.5);
+    }
+    .stat-row:last-child { border-bottom: none; }
+
+    /* Main Content Layout */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 2.15fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 1180px) { .main-grid { grid-template-columns: 1fr; } }
+
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .filter-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill-btn {
+      padding: 4px 10px;
+      font-size: 0.74rem;
+      border-radius: 999px;
+      background: #162032;
+    }
+    .pill-btn.active { background: var(--cyan); color: #070b14; border-color: var(--cyan); font-weight: 700; }
+    .search-input {
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 6px 11px;
+      border-radius: 6px;
+      font-size: 0.79rem;
+      min-width: 220px;
+    }
+
+    .table-wrap { overflow-x: auto; max-height: 520px; overflow-y: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.77rem; }
+    th, td {
+      padding: 8px 9px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      background: #0d1526;
+      color: var(--muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      z-index: 2;
+    }
+    tr.row-threat { background: rgba(239, 68, 68, 0.1); }
+    tr.row-suspended { background: rgba(245, 158, 11, 0.12); }
+
+    /* Audit Stream */
+    .audit-stream {
+      max-height: 560px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .audit-card {
+      background: #0b1120;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-size: 0.76rem;
+    }
+    .audit-top {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.7rem;
+      margin-bottom: 3px;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(3, 7, 18, 0.82);
+      backdrop-filter: blur(3px);
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal-box {
+      background: var(--panel);
+      border: 1px solid #334155;
+      border-radius: 12px;
+      max-width: 520px;
+      width: 100%;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+    .modal-title { font-size: 1.05rem; font-weight: 800; margin-bottom: 10px; }
+    .modal-body { font-size: 0.84rem; color: #cbd5e1; margin-bottom: 16px; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 10px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.76rem; color: var(--muted); margin-bottom: 4px; }
+    .form-control {
+      width: 100%;
+      background: #0b1120;
+      border: 1px solid #334155;
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 0.83rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="topbar">
+    <div>
+      <div class="brand-title">
+        <span>🛡️ TUNABYTES V4</span>
+        <span class="badge b-cyan">BEHAVIORAL EDR + HITL DOUBLE-LOCK</span>
+      </div>
+      <div class="brand-sub">
+        Zero CPU/RAM False Positives &bull; Immutable OS/Browser/IDE Whitelist &bull; Monotonic Freshness Gates
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="aiModeBadge" class="badge b-purple">AI: LOCAL_BEHAVIORAL_ENGINE</span>
+      <button class="btn-purple" id="btnOpenGeminiModal">🔑 Configure Gemini AI</button>
+      <button class="btn-cyan" id="btnDownloadPdfTop">📄 Download PDF Report</button>
+    </div>
+  </header>
+
+  <!-- Decoupled Health Status Strip (Invariant 6) -->
+  <section class="health-strip">
+    <div class="health-pill">
+      <span class="health-label">Collector</span>
+      <span id="hCollector" class="badge b-green">RUNNING</span>
+    </div>
+    <div class="health-pill">
+      <span class="health-label">AI Advisor</span>
+      <span id="hAdvisor" class="badge b-green">AVAILABLE</span>
+    </div>
+    <div class="health-pill">
+      <span class="health-label">Queue Health</span>
+      <span id="hQueue" class="badge b-green">NORMAL</span>
+    </div>
+    <div class="health-pill">
+      <span class="health-label">Enforcement Mode</span>
+      <span id="hEnforcement" class="badge b-cyan">HITL_ADVISORY</span>
+    </div>
+  </section>
+
+  <!-- Pulsing Interactive Threat Advisory Banner (Human-in-the-Loop) -->
+  <section id="threatBanner" class="threat-banner">
+    <div class="threat-banner-header">
+      <div class="threat-banner-title" id="tbTitle">⚠️ BEHAVIORAL THREAT DETECTED</div>
+      <span id="tbBadge" class="badge b-red">MALICIOUS</span>
+    </div>
+    <div class="threat-banner-desc" id="tbEvidence"></div>
+    <div class="threat-banner-actions">
+      <button class="btn-amber" id="tbFreezeBtn">❄️ Freeze Process (Pause in RAM)</button>
+      <button class="btn-red" id="tbTerminateBtn">🔒 Terminate Process (Double-Lock)</button>
+      <button id="tbDismissBtn">Ignore / Dismiss Alert</button>
+    </div>
+  </section>
+
+  <!-- 3 Operational Metric Cards -->
+  <section class="cards-grid">
+    <!-- Card 1: Coalescing State Machine -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Coalescing State Machine</span>
+        <span class="badge b-cyan" id="smQueueDepth">Queue: 0 / 64</span>
+      </div>
+      <div class="stat-row"><span>IDLE / QUEUED / ANALYZING / COOLDOWN</span><strong id="smStateBreakdown">0 / 0 / 0 / 0</strong></div>
+      <div class="stat-row"><span>Coalesced Duplicate Anomalies</span><strong id="smCoalesced">0</strong></div>
+      <div class="stat-row"><span>Pre-AI Stale Drops (&gt;15.0s)</span><strong id="smPreAiDrops">0</strong></div>
+      <div class="stat-row"><span>Post-AI Stale Drops (&gt;30.0s)</span><strong id="smPostAiDrops">0</strong></div>
+    </div>
+
+    <!-- Card 2: Behavioral Threat Triggers & Whitelist -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Behavioral Threat Triggers</span>
+        <span class="badge b-green" id="wlCountBadge">Protected: 0</span>
+      </div>
+      <div class="stat-row"><span>🔥 FILE_CORRUPTION_BURST</span><strong id="trigCorruption">0</strong></div>
+      <div class="stat-row"><span>🗑️ MASS_FILE_DELETION_IO</span><strong id="trigDeletion">0</strong></div>
+      <div class="stat-row"><span>⚡ UNAUTHORIZED_PROGRAM_SPAWN</span><strong id="trigSpawn">0</strong></div>
+      <div class="stat-row"><span>Monitored User Applications</span><strong id="userAppCount">0</strong></div>
+    </div>
+
+    <!-- Card 3: Synthetic Simulator & HITL Controller -->
+    <div class="card">
+      <div class="card-title">
+        <span>3. Attack Simulator &amp; HITL Control</span>
+        <span class="badge b-muted" id="demoStatusBadge">Demo: IDLE</span>
+      </div>
+      <p style="font-size: 0.76rem; color: var(--muted); margin-bottom: 10px;">
+        Spawns trusted <code>demo_workload.py</code> in <code>%TEMP%</code> to simulate file corruption bursts, mass deletions, and child process spawns.
+      </p>
+      <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <button class="btn-cyan" id="btnLaunchDemo">🚀 Launch Attack Simulator</button>
+        <button id="btnToggleMode">Mode: HITL_ADVISORY (DISABLED)</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Confirmed Process Termination Forensic Ledger -->
+  <section class="card" style="margin-bottom: 16px;">
+    <div class="card-title">
+      <span>🔒 Terminated Applications Forensic Ledger (Session History)</span>
+      <span class="badge b-red" id="terminatedCountBadge">0 Stopped</span>
+    </div>
+    <div class="table-wrap" style="max-height: 170px;">
+      <table>
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>PID</th>
+            <th>Application</th>
+            <th>Verdict</th>
+            <th>Behavioral Triggers</th>
+            <th>Authorization Mode</th>
+            <th>Forensic Summary</th>
+          </tr>
+        </thead>
+        <tbody id="terminatedTableBody">
+          <tr><td colspan="7" style="color: var(--muted);">No applications terminated yet. Use the 2-Step Double-Lock modal or DEMO_ONLY mode.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Main Split Grid: Behavioral Telemetry Table + Real-Time Audit Stream -->
+  <section class="main-grid">
+    <div class="card">
+      <div class="card-title">
+        <span>Live Process Behavioral Telemetry (deque maxlen=7, 30.0s Monotonic Window)</span>
+      </div>
+      <div class="filter-bar">
+        <div class="filter-pills">
+          <button class="pill-btn active" data-filter="ALL">All Processes</button>
+          <button class="pill-btn" data-filter="THREATS">⚠️ Threats Only</button>
+          <button class="pill-btn" data-filter="USER">User Apps</button>
+          <button class="pill-btn" data-filter="WHITELISTED">🛡️ Protected Whitelist</button>
+        </div>
+        <input type="text" id="procSearchInput" class="search-input" placeholder="Search PID, name, or behavior..." />
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>PID</th>
+              <th>Process</th>
+              <th>Safety</th>
+              <th>Write/Corrupt</th>
+              <th>Delete/Meta</th>
+              <th>Spawns</th>
+              <th>Behavioral Indicators</th>
+              <th>EDR State</th>
+              <th>AI Verdict &amp; Explanation</th>
+              <th>HITL Actions</th>
+            </tr>
+          </thead>
+          <tbody id="telemetryTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Security & Behavioral Audit Log -->
+    <div class="card">
+      <div class="card-title">
+        <span>Real-Time Security &amp; Audit Log</span>
+        <button class="btn-cyan" id="btnDownloadPdfAudit" style="padding: 4px 9px; font-size: 0.72rem;">📄 Export PDF</button>
+      </div>
+      <div id="auditLogStream" class="audit-stream"></div>
+    </div>
+  </section>
+
+  <!-- MODAL 1: 2-Step "Double-Lock" Process Termination Modal -->
+  <div id="doubleLockModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title" id="dlModalTitle" style="color: #fca5a5;">
+        🔒 Step 1 of 2: Application Consequence Warning
+      </div>
+      <div class="modal-body" id="dlModalBody"></div>
+      <div class="modal-footer">
+        <button id="dlCancelBtn">Cancel (Keep Running)</button>
+        <button class="btn-amber" id="dlStep1ProceedBtn">I Understand — Proceed to Step 2</button>
+        <button class="btn-red" id="dlStep2ConfirmBtn" style="display: none;">🔥 Confirm Force-Quit Process</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: Live Google Gemini API Key Configuration Modal -->
+  <div id="geminiModal" class="modal-backdrop">
+    <div class="modal-box">
+      <div class="modal-title" style="color: var(--cyan);">🔑 Configure Google Gemini AI Advisor</div>
+      <div class="modal-body">
+        <p style="margin-bottom: 12px;">
+          Paste your Google Gemini API Key below to switch from the built-in <strong>Local Behavioral Engine</strong> to live <strong>Google Gemini REST API</strong> analysis at runtime (strict 12.0s deadline &amp; Pydantic schema validation enforced).
+        </p>
+        <div class="form-group">
+          <label for="geminiKeyInput">Google Gemini API Key (starts with AIza...)</label>
+          <input type="password" id="geminiKeyInput" class="form-control" placeholder="AIzaSy..." autocomplete="off" />
+        </div>
+        <div class="form-group">
+          <label for="geminiModelSelect">Gemini Model</label>
+          <select id="geminiModelSelect" class="form-control">
+            <option value="gemini-2.5-flash">gemini-2.5-flash (Recommended Low-Latency)</option>
+            <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+            <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+          </select>
+        </div>
+        <div id="geminiStatusNote" style="font-size: 0.76rem; color: var(--muted);"></div>
+      </div>
+      <div class="modal-footer">
+        <button id="btnClearGeminiKey">Use Local Behavioral Engine</button>
+        <button id="btnCloseGeminiModal">Close</button>
+        <button class="btn-cyan" id="btnSaveGeminiKey">Save &amp; Activate Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const IS_STANDALONE_PREVIEW = window.location.protocol === "blob:" || window.location.protocol === "file:";
+    let currentFilter = "ALL";
+    let searchQuery = "";
+    let latestState = null;
+
+    // Double-Lock Modal Target State
+    let dlTargetProcess = null;
+    let dlStep1Done = false;
+
+    // Standalone Preview Simulator State (only used when opened outside FastAPI)
+    const previewSim = {
+      mode: "DISABLED",
+      aiMode: "LOCAL_BEHAVIORAL_ENGINE",
+      aiModel: "gemini-2.5-flash",
+      demoRunning: false,
+      demoSuspended: false,
+      demoPid: 4820,
+      coalesced: 4,
+      terminated: [],
+      audits: [
+        { timestamp: "12:00:01", pid: 0, name: "SYSTEM", verdict: "INFO", confidence: 1.0, action: "TUNABYTES_V4_STARTED", evidence: "Behavioral monitor & immutable whitelist initialized." }
+      ]
+    };
+
+    async function apiCall(path, options = {}) {
+      if (!IS_STANDALONE_PREVIEW) {
+        const res = await fetch(path, options);
+        return res;
+      }
+      // Fallback simulator for standalone HTML preview
+      if (path === "/api/launch-demo") {
+        previewSim.demoRunning = true;
+        previewSim.demoSuspended = false;
+        previewSim.audits.unshift({
+          timestamp: new Date().toTimeString().slice(0, 8),
+          pid: previewSim.demoPid,
+          name: "demo_workload.py",
+          verdict: "MALICIOUS",
+          confidence: 0.97,
+          action: "HITL_THREAT_ALERT_RAISED",
+          evidence: "DANGER: demo_workload.py was caught rapidly overwriting/corrupting files (22 write ops, 352 KB), deleting/renaming files in bulk, and spawning cmd.exe."
+        });
+      } else if (path === "/api/enforcement-mode") {
+        previewSim.mode = previewSim.mode === "DISABLED" ? "DEMO_ONLY" : "DISABLED";
+      } else if (path.startsWith("/api/suspend-process/")) {
+        previewSim.demoSuspended = true;
+      } else if (path.startsWith("/api/resume-process/")) {
+        previewSim.demoSuspended = false;
+      } else if (path.startsWith("/api/terminate-process/")) {
+        previewSim.demoRunning = false;
+        previewSim.terminated.unshift({
+          timestamp: new Date().toTimeString().slice(0, 8),
+          pid: previewSim.demoPid,
+          name: "demo_workload.py",
+          verdict: "MALICIOUS",
+          confidence: 0.97,
+          triggers: ["FILE_CORRUPTION_BURST", "MASS_FILE_DELETION_IO", "UNAUTHORIZED_PROGRAM_SPAWN"],
+          mode: "HITL_DOUBLE_LOCK",
+          reason: "Confirmed via 2-Step Double-Lock UI"
+        });
+      }
+      return {
+        ok: true,
+        json: async () => ({
+          health: { Collector: "RUNNING", "AI Advisor": "AVAILABLE", Queue: "NORMAL", Enforcement: previewSim.mode },
+          ai_config: { mode: previewSim.aiMode, has_api_key: previewSim.aiMode === "GEMINI_LIVE_API", masked_key: "AIza...demo", model: previewSim.aiModel },
+          stats: {
+            total_tracked: 42, whitelisted_count: 38, user_app_count: 4,
+            trigger_stats: { FILE_CORRUPTION_BURST: previewSim.demoRunning ? 3 : 0, MASS_FILE_DELETION_IO: previewSim.demoRunning ? 3 : 0, UNAUTHORIZED_PROGRAM_SPAWN: previewSim.demoRunning ? 1 : 0 },
+            queue_depth: 0, coalesced_total: previewSim.coalesced, dropped_events_total: 0, stale_pre_ai_drops: 0, stale_post_ai_drops: 0,
+            state_counts: { IDLE: 41, QUEUED: 0, ANALYZING: 0, COOLDOWN: previewSim.demoRunning ? 1 : 0 },
+            enforcement_mode: previewSim.mode
+          },
+          demo: { running: previewSim.demoRunning, pid: previewSim.demoRunning ? previewSim.demoPid : null },
+          active_alerts: previewSim.demoRunning ? [{
+            pid: previewSim.demoPid, name: "demo_workload.py", verdict: "MALICIOUS", confidence: 0.97,
+            evidence: "DANGER: demo_workload.py (PID 4820) was caught rapidly overwriting/corrupting files (22 write ops, 352 KB), deleting/renaming files in bulk (44 metadata ops), and spawning unauthorized program (cmd.exe).",
+            triggers: ["FILE_CORRUPTION_BURST", "MASS_FILE_DELETION_IO", "UNAUTHORIZED_PROGRAM_SPAWN"],
+            is_suspended: previewSim.demoSuspended, state: "COOLDOWN"
+          }] : [],
+          terminated_history: previewSim.terminated,
+          processes: [
+            ...(previewSim.demoRunning ? [{
+              pid: previewSim.demoPid, name: "demo_workload.py", is_whitelisted: false, whitelist_reason: "",
+              window_write_ops: 22, window_write_kb: 352.0, window_other_ops: 44, window_spawns: 1,
+              anomaly_reasons: ["FILE_CORRUPTION_BURST", "MASS_FILE_DELETION_IO", "UNAUTHORIZED_PROGRAM_SPAWN"],
+              is_elevated: true, edr_state: "COOLDOWN", cooldown_remaining_sec: 54.2,
+              last_verdict: "MALICIOUS", last_confidence: 0.97,
+              last_evidence: "DANGER: Rapid file corruption + mass deletion + child shell spawn.",
+              is_suspended: previewSim.demoSuspended, is_demo_target: true
+            }] : []),
+            {
+              pid: 1420, name: "chrome.exe", is_whitelisted: true, whitelist_reason: "IMMUTABLE_WHITELIST_APP",
+              window_write_ops: 4, window_write_kb: 24.0, window_other_ops: 2, window_spawns: 0,
+              anomaly_reasons: [], is_elevated: false, edr_state: "IDLE", cooldown_remaining_sec: 0,
+              last_verdict: "NONE", last_confidence: 0, last_evidence: "High RAM/CPU ignored; immutable browser whitelist.",
+              is_suspended: false, is_demo_target: false
+            },
+            {
+              pid: 2812, name: "code.exe", is_whitelisted: true, whitelist_reason: "IMMUTABLE_WHITELIST_APP",
+              window_write_ops: 2, window_write_kb: 12.0, window_other_ops: 1, window_spawns: 0,
+              anomaly_reasons: [], is_elevated: false, edr_state: "IDLE", cooldown_remaining_sec: 0,
+              last_verdict: "NONE", last_confidence: 0, last_evidence: "Protected developer IDE.",
+              is_suspended: false, is_demo_target: false
+            }
+          ],
+          audit_log: previewSim.audits
+        })
+      };
+    }
+
+    function badgeForState(val) {
+      if (["RUNNING", "AVAILABLE", "NORMAL", "BENIGN", "PROTECTED"].includes(val)) return "badge b-green";
+      if (["DEGRADED", "BACKLOGGED", "SUSPICIOUS", "QUEUED", "ANALYZING"].includes(val)) return "badge b-amber";
+      if (["STOPPED", "UNAVAILABLE", "DROPPING_EVENTS", "MALICIOUS"].includes(val)) return "badge b-red";
+      if (["COOLDOWN", "DEMO_ONLY"].includes(val)) return "badge b-purple";
+      return "badge b-cyan";
+    }
+
+    async function pollTelemetry() {
+      try {
+        const res = await apiCall("/api/telemetry");
+        if (!res.ok) return;
+        const data = await res.json();
+        latestState = data;
+
+        // 1. Update Health Strip
+        const h = data.health;
+        const setBadge = (id, val, labelOverride) => {
+          const el = document.getElementById(id);
+          el.className = badgeForState(val);
+          el.textContent = labelOverride || val;
+        };
+        setBadge("hCollector", h["Collector"]);
+        setBadge("hAdvisor", h["AI Advisor"]);
+        setBadge("hQueue", h["Queue"]);
+        const enfLabel = h["Enforcement"] === "DISABLED" ? "HITL_ADVISORY (DISABLED)" : "DEMO_ONLY";
+        setBadge("hEnforcement", h["Enforcement"], enfLabel);
+
+        // AI Config Badge
+        const aiCfg = data.ai_config;
+        const aiBadge = document.getElementById("aiModeBadge");
+        if (aiCfg.has_api_key) {
+          aiBadge.className = "badge b-green";
+          aiBadge.textContent = `AI: GEMINI_LIVE (${aiCfg.model})`;
+        } else {
+          aiBadge.className = "badge b-purple";
+          aiBadge.textContent = "AI: LOCAL_BEHAVIORAL_ENGINE";
+        }
+
+        // 2. Update 3 Metric Cards
+        const st = data.stats;
+        const sc = st.state_counts || {};
+        document.getElementById("smQueueDepth").textContent = `Queue: ${st.queue_depth} / 64`;
+        document.getElementById("smStateBreakdown").textContent = `${sc.IDLE || 0} / ${sc.QUEUED || 0} / ${sc.ANALYZING || 0} / ${sc.COOLDOWN || 0}`;
+        document.getElementById("smCoalesced").textContent = st.coalesced_total;
+        document.getElementById("smPreAiDrops").textContent = st.stale_pre_ai_drops;
+        document.getElementById("smPostAiDrops").textContent = st.stale_post_ai_drops;
+
+        document.getElementById("wlCountBadge").textContent = `Protected: ${st.whitelisted_count}`;
+        document.getElementById("trigCorruption").textContent = st.trigger_stats.FILE_CORRUPTION_BURST || 0;
+        document.getElementById("trigDeletion").textContent = st.trigger_stats.MASS_FILE_DELETION_IO || 0;
+        document.getElementById("trigSpawn").textContent = st.trigger_stats.UNAUTHORIZED_PROGRAM_SPAWN || 0;
+        document.getElementById("userAppCount").textContent = st.user_app_count;
+
+        const demoBadge = document.getElementById("demoStatusBadge");
+        if (data.demo.running) {
+          demoBadge.className = "badge b-red";
+          demoBadge.textContent = `Demo Active (PID ${data.demo.pid})`;
+        } else {
+          demoBadge.className = "badge b-muted";
+          demoBadge.textContent = "Demo: IDLE";
+        }
+        document.getElementById("btnToggleMode").textContent = `Mode: ${enfLabel}`;
+
+        // 3. Interactive Threat Advisory Banner
+        const alerts = data.active_alerts || [];
+        const banner = document.getElementById("threatBanner");
+        if (alerts.length > 0) {
+          const topAlert = alerts[0];
+          banner.style.display = "block";
+          document.getElementById("tbTitle").textContent =
+            `⚠️ ACTIVE BEHAVIORAL THREAT: ${topAlert.name} (PID ${topAlert.pid}) ${topAlert.is_suspended ? "[FROZEN IN RAM]" : ""}`;
+          const tbBadge = document.getElementById("tbBadge");
+          tbBadge.className = badgeForState(topAlert.verdict);
+          tbBadge.textContent = `${topAlert.verdict} (${Math.round(topAlert.confidence * 100)}%)`;
+          document.getElementById("tbEvidence").textContent = topAlert.evidence;
+
+          const freezeBtn = document.getElementById("tbFreezeBtn");
+          freezeBtn.textContent = topAlert.is_suspended ? "▶️ Resume Process" : "❄️ Freeze Process (Pause in RAM)";
+          freezeBtn.onclick = () => toggleSuspendProcess(topAlert.pid, topAlert.is_suspended);
+          document.getElementById("tbTerminateBtn").onclick = () => openDoubleLockModal(topAlert);
+          document.getElementById("tbDismissBtn").onclick = () => dismissAlert(topAlert.pid);
+        } else {
+          banner.style.display = "none";
+        }
+
+        // 4. Render Terminated Applications Forensic Ledger
+        renderTerminatedLedger(data.terminated_history || []);
+
+        // 5. Render Live Behavioral Telemetry Table
+        renderTelemetryTable(data.processes || []);
+
+        // 6. Render Real-Time Security Audit Log (XSS-safe textContent)
+        renderAuditLog(data.audit_log || []);
+      } catch (err) {
+        console.error("Telemetry poll error:", err);
+      }
+    }
+
+    function renderTerminatedLedger(items) {
+      document.getElementById("terminatedCountBadge").textContent = `${items.length} Stopped`;
+      const tbody = document.getElementById("terminatedTableBody");
+      tbody.replaceChildren();
+      if (items.length === 0) {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.colSpan = 7;
+        td.style.color = "var(--muted)";
+        td.textContent = "No applications terminated during this session.";
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+      items.forEach(item => {
+        const tr = document.createElement("tr");
+        const cells = [
+          item.timestamp,
+          item.pid,
+          item.name,
+          `${item.verdict} (${Math.round((item.confidence || 0) * 100)}%)`,
+          (item.triggers || []).join(", ") || "MANUAL",
+          item.mode,
+          item.reason || ""
+        ];
+        cells.forEach(val => {
+          const td = document.createElement("td");
+          td.textContent = String(val);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderTelemetryTable(processes) {
+      const tbody = document.getElementById("telemetryTableBody");
+      tbody.replaceChildren();
+
+      const filtered = processes.filter(p => {
+        if (currentFilter === "THREATS" && !p.is_elevated && !["MALICIOUS", "SUSPICIOUS"].includes(p.last_verdict)) return false;
+        if (currentFilter === "USER" && p.is_whitelisted) return false;
+        if (currentFilter === "WHITELISTED" && !p.is_whitelisted) return false;
+        if (searchQuery) {
+          const hay = `${p.pid} ${p.name} ${(p.anomaly_reasons || []).join(" ")} ${p.last_verdict}`.toLowerCase();
+          if (!hay.includes(searchQuery.toLowerCase())) return false;
+        }
+        return true;
+      });
+
+      filtered.forEach(p => {
+        const tr = document.createElement("tr");
+        if (p.is_suspended) tr.className = "row-suspended";
+        else if (p.is_elevated || p.last_verdict === "MALICIOUS") tr.className = "row-threat";
+
+        // PID
+        const tdPid = document.createElement("td");
+        tdPid.textContent = p.pid;
+
+        // Name
+        const tdName = document.createElement("td");
+        tdName.style.fontWeight = "600";
+        tdName.textContent = p.is_demo_target ? `${p.name} [SIMULATOR]` : p.name;
+
+        // Safety Badge
+        const tdSafety = document.createElement("td");
+        const sBadge = document.createElement("span");
+        if (p.is_whitelisted) {
+          sBadge.className = "badge b-green";
+          sBadge.textContent = "🛡️ PROTECTED";
+        } else if (p.is_suspended) {
+          sBadge.className = "badge b-amber";
+          sBadge.textContent = "❄️ FROZEN";
+        } else if (p.is_elevated || p.last_verdict === "MALICIOUS") {
+          sBadge.className = "badge b-red";
+          sBadge.textContent = "⚠️ THREAT";
+        } else {
+          sBadge.className = "badge b-muted";
+          sBadge.textContent = "USER_APP";
+        }
+        tdSafety.appendChild(sBadge);
+
+        // Write Ops / KB
+        const tdWrite = document.createElement("td");
+        tdWrite.textContent = `${p.window_write_ops} ops (${p.window_write_kb} KB)`;
+
+        // Delete / Meta Ops
+        const tdDel = document.createElement("td");
+        tdDel.textContent = `${p.window_other_ops} ops`;
+
+        // Child Spawns
+        const tdSpawn = document.createElement("td");
+        tdSpawn.textContent = p.window_spawns;
+
+        // Behavioral Indicator Badges
+        const tdReasons = document.createElement("td");
+        const reasons = p.anomaly_reasons || [];
+        if (reasons.length === 0) {
+          const sp = document.createElement("span");
+          sp.style.color = "var(--muted)";
+          sp.textContent = "Normal Behavior";
+          tdReasons.appendChild(sp);
+        } else {
+          reasons.forEach(r => {
+            const rb = document.createElement("span");
+            rb.className = "badge b-red";
+            rb.style.marginRight = "4px";
+            rb.textContent = r;
+            tdReasons.appendChild(rb);
+          });
+        }
+
+        // EDR State
+        const tdState = document.createElement("td");
+        const stBadge = document.createElement("span");
+        stBadge.className = badgeForState(p.edr_state);
+        stBadge.textContent = p.edr_state === "COOLDOWN" ? `COOLDOWN (${p.cooldown_remaining_sec}s)` : p.edr_state;
+        tdState.appendChild(stBadge);
+
+        // AI Verdict & Plain-English Explanation
+        const tdVerdict = document.createElement("td");
+        if (p.last_verdict && p.last_verdict !== "NONE") {
+          const vb = document.createElement("span");
+          vb.className = badgeForState(p.last_verdict);
+          vb.textContent = `${p.last_verdict} (${Math.round((p.last_confidence || 0) * 100)}%)`;
+          tdVerdict.appendChild(vb);
+          if (p.last_evidence) {
+            const evDiv = document.createElement("div");
+            evDiv.style.fontSize = "0.71rem";
+            evDiv.style.color = "var(--muted)";
+            evDiv.style.marginTop = "3px";
+            evDiv.textContent = p.last_evidence;
+            tdVerdict.appendChild(evDiv);
+          }
+        } else {
+          tdVerdict.style.color = "var(--muted)";
+          tdVerdict.textContent = p.is_whitelisted ? "Whitelisted (Ignored)" : "Monitoring";
+        }
+
+        // HITL Actions
+        const tdActions = document.createElement("td");
+        if (p.is_whitelisted) {
+          const btnProt = document.createElement("button");
+          btnProt.disabled = true;
+          btnProt.textContent = "Protected";
+          tdActions.appendChild(btnProt);
+        } else {
+          const wrap = document.createElement("div");
+          wrap.style.display = "flex";
+          wrap.style.gap = "5px";
+
+          const btnFreeze = document.createElement("button");
+          btnFreeze.className = "btn-amber";
+          btnFreeze.style.padding = "4px 8px";
+          btnFreeze.textContent = p.is_suspended ? "▶️ Resume" : "❄️ Freeze";
+          btnFreeze.onclick = () => toggleSuspendProcess(p.pid, p.is_suspended);
+
+          const btnKill = document.createElement("button");
+          btnKill.className = "btn-red";
+          btnKill.style.padding = "4px 8px";
+          btnKill.textContent = "🔒 Terminate";
+          btnKill.onclick = () => openDoubleLockModal({
+            pid: p.pid,
+            name: p.name,
+            exe_path: p.exe_path,
+            verdict: p.last_verdict || "MANUAL_INSPECTION",
+            evidence: p.last_evidence || "Operator initiated manual Double-Lock termination.",
+            triggers: p.anomaly_reasons || []
+          });
+
+          wrap.append(btnFreeze, btnKill);
+          tdActions.appendChild(wrap);
+        }
+
+        tr.append(tdPid, tdName, tdSafety, tdWrite, tdDel, tdSpawn, tdReasons, tdState, tdVerdict, tdActions);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderAuditLog(logs) {
+      const stream = document.getElementById("auditLogStream");
+      stream.replaceChildren();
+      logs.forEach(item => {
+        const card = document.createElement("div");
+        card.className = "audit-card";
+
+        const top = document.createElement("div");
+        top.className = "audit-top";
+        const left = document.createElement("span");
+        left.textContent = `${item.timestamp} | PID ${item.pid} (${item.name})`;
+        const right = document.createElement("span");
+        right.className = badgeForState(item.verdict);
+        right.textContent = item.verdict;
+        top.append(left, right);
+
+        const act = document.createElement("div");
+        act.style.fontWeight = "700";
+        act.style.marginBottom = "2px";
+        act.textContent = item.action;
+
+        const ev = document.createElement("div");
+        ev.style.color = "var(--muted)";
+        ev.textContent = item.evidence;
+
+        card.append(top, act, ev);
+        stream.appendChild(card);
+      });
+    }
+
+    // HITL Freeze / Resume
+    async function toggleSuspendProcess(pid, currentlySuspended) {
+      const route = currentlySuspended ? `/api/resume-process/${pid}` : `/api/suspend-process/${pid}`;
+      await apiCall(route, { method: "POST" });
+      await pollTelemetry();
+    }
+
+    async function dismissAlert(pid) {
+      await apiCall(`/api/dismiss-alert/${pid}`, { method: "POST" });
+      await pollTelemetry();
+    }
+
+    // 2-Step Double-Lock Verification Modal Workflow
+    function openDoubleLockModal(procInfo) {
+      dlTargetProcess = procInfo;
+      dlStep1Done = false;
+      const modal = document.getElementById("doubleLockModal");
+      const title = document.getElementById("dlModalTitle");
+      const body = document.getElementById("dlModalBody");
+      const btnStep1 = document.getElementById("dlStep1ProceedBtn");
+      const btnStep2 = document.getElementById("dlStep2ConfirmBtn");
+
+      title.textContent = "⚠️ Step 1 of 2: Application Consequence Warning";
+      body.replaceChildren();
+
+      const pWarn = document.createElement("p");
+      pWarn.style.marginBottom = "10px";
+      pWarn.style.fontWeight = "700";
+      pWarn.style.color = "#fde68a";
+      pWarn.textContent = "Warning: Closing this application immediately may result in unsaved data loss or interrupted work.";
+
+      const pDetails = document.createElement("div");
+      pDetails.style.background = "#0b1120";
+      pDetails.style.padding = "10px";
+      pDetails.style.borderRadius = "6px";
+      pDetails.textContent = `Target: ${procInfo.name} (PID ${procInfo.pid}) | Triggers: ${(procInfo.triggers || []).join(", ") || "Manual"} | AI Advisory: ${procInfo.evidence || "N/A"}`;
+
+      body.append(pWarn, pDetails);
+      btnStep1.style.display = "inline-flex";
+      btnStep2.style.display = "none";
+      modal.style.display = "flex";
+    }
+
+    document.getElementById("dlStep1ProceedBtn").addEventListener("click", () => {
+      if (!dlTargetProcess) return;
+      dlStep1Done = true;
+      document.getElementById("dlModalTitle").textContent = "🔥 Step 2 of 2: Final Force-Quit Confirmation";
+      const body = document.getElementById("dlModalBody");
+      body.replaceChildren();
+      const pConfirm = document.createElement("p");
+      pConfirm.style.fontWeight = "700";
+      pConfirm.style.color = "#fca5a5";
+      pConfirm.textContent = `Are you absolutely sure you want to force-quit ${dlTargetProcess.name} (PID ${dlTargetProcess.pid})? This action will be recorded in the Forensic Ledger.`;
+      body.appendChild(pConfirm);
+
+      document.getElementById("dlStep1ProceedBtn").style.display = "none";
+      document.getElementById("dlStep2ConfirmBtn").style.display = "inline-flex";
+    });
+
+    document.getElementById("dlStep2ConfirmBtn").addEventListener("click", async () => {
+      if (!dlTargetProcess || !dlStep1Done) return;
+      await apiCall(`/api/terminate-process/${dlTargetProcess.pid}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          step1_acknowledged: true,
+          step2_confirmed: true,
+          reason: dlTargetProcess.evidence || "Confirmed via 2-Step Double-Lock Modal"
+        })
+      });
+      document.getElementById("doubleLockModal").style.display = "none";
+      dlTargetProcess = null;
+      await pollTelemetry();
+    });
+
+    document.getElementById("dlCancelBtn").addEventListener("click", () => {
+      document.getElementById("doubleLockModal").style.display = "none";
+      dlTargetProcess = null;
+    });
+
+    // Gemini API Key Configuration Modal
+    document.getElementById("btnOpenGeminiModal").addEventListener("click", () => {
+      document.getElementById("geminiModal").style.display = "flex";
+    });
+    document.getElementById("btnCloseGeminiModal").addEventListener("click", () => {
+      document.getElementById("geminiModal").style.display = "none";
+    });
+    document.getElementById("btnSaveGeminiKey").addEventListener("click", async () => {
+      const key = document.getElementById("geminiKeyInput").value.trim();
+      const model = document.getElementById("geminiModelSelect").value;
+      if (IS_STANDALONE_PREVIEW) {
+        previewSim.aiMode = key ? "GEMINI_LIVE_API" : "LOCAL_BEHAVIORAL_ENGINE";
+        previewSim.aiModel = model;
+      } else {
+        await fetch("/api/config/gemini-key", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: key, model })
+        });
+      }
+      document.getElementById("geminiModal").style.display = "none";
+      await pollTelemetry();
+    });
+    document.getElementById("btnClearGeminiKey").addEventListener("click", async () => {
+      document.getElementById("geminiKeyInput").value = "";
+      if (IS_STANDALONE_PREVIEW) {
+        previewSim.aiMode = "LOCAL_BEHAVIORAL_ENGINE";
+      } else {
+        await fetch("/api/config/gemini-key", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ api_key: "", model: "gemini-2.5-flash" })
+        });
+      }
+      document.getElementById("geminiModal").style.display = "none";
+      await pollTelemetry();
+    });
+
+    // One-Click Executive PDF Report Download
+    async function triggerPdfDownload(btnEl) {
+      const originalText = btnEl.textContent;
+      btnEl.disabled = true;
+      btnEl.textContent = "⏳ Generating PDF...";
+      try {
+        if (IS_STANDALONE_PREVIEW) {
+          alert("In standalone preview mode. Run via `uvicorn main:app` to download the multi-page PDF report from /api/export-pdf-report.");
+          return;
+        }
+        const res = await fetch("/api/export-pdf-report");
+        if (!res.ok) throw new Error("PDF generation failed");
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Tunabytes_V4_Forensic_Report_${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("PDF download error:", err);
+      } finally {
+        btnEl.disabled = false;
+        btnEl.textContent = originalText;
+      }
+    }
+
+    document.getElementById("btnDownloadPdfTop").addEventListener("click", (e) => triggerPdfDownload(e.currentTarget));
+    document.getElementById("btnDownloadPdfAudit").addEventListener("click", (e) => triggerPdfDownload(e.currentTarget));
+
+    // Demo Workload & Mode Toggles
+    document.getElementById("btnLaunchDemo").addEventListener("click", async () => {
+      await apiCall("/api/launch-demo", { method: "POST" });
+      await pollTelemetry();
+    });
+    document.getElementById("btnToggleMode").addEventListener("click", async () => {
+      await apiCall("/api/enforcement-mode", { method: "POST" });
+      await pollTelemetry();
+    });
+
+    // Filter Pills & Search Bar
+    document.querySelectorAll(".pill-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".pill-btn").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        currentFilter = btn.getAttribute("data-filter");
+        if (latestState) renderTelemetryTable(latestState.processes || []);
+      });
+    });
+
+    document.getElementById("procSearchInput").addEventListener("input", (e) => {
+      searchQuery = e.target.value || "";
+      if (latestState) renderTelemetryTable(latestState.processes || []);
+    });
+
+    pollTelemetry();
+    setInterval(pollTelemetry, 1500);
+  </script>
+</body>
+</html>
